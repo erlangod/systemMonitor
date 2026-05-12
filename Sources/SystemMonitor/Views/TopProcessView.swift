@@ -38,7 +38,7 @@ struct ProcessListView: View {
                             }
                             Text(String(format: "%.1f%@", value, unit))
                                 .font(.caption.monospacedDigit())
-                                .foregroundStyle(colorForValue(value))
+                                .foregroundStyle(colorForUsage(value))
                         }
                     }
                 }
@@ -56,16 +56,6 @@ struct ProcessListView: View {
         } else {
             let mb = Double(bytes) / 1_048_576.0
             return String(format: "%.1f MB", mb)
-        }
-    }
-
-    private func colorForValue(_ value: Double) -> Color {
-        if value > 80 {
-            return .red
-        } else if value > 50 {
-            return .yellow
-        } else {
-            return .green
         }
     }
 }

@@ -1,13 +1,18 @@
 import SwiftUI
 
-func formatBytes(_ bytes: UInt64) -> String {
-    let gb = Double(bytes) / 1_073_741_824.0
+func formatBytes(_ bytes: UInt64, binary: Bool = true) -> String {
+    let gb = Double(bytes) / (binary ? 1_073_741_824.0 : 1_000_000_000.0)
     if gb >= 1.0 {
         return String(format: "%.1f GB", gb)
-    } else {
-        let mb = Double(bytes) / 1_048_576.0
-        return String(format: "%.1f MB", mb)
     }
+    let mb = Double(bytes) / (binary ? 1_048_576.0 : 1_000_000.0)
+    return String(format: "%.1f MB", mb)
+}
+
+func colorForUsage(_ percent: Double) -> Color {
+    if percent > 80 { return .red }
+    if percent > 50 { return .yellow }
+    return .green
 }
 
 struct CapsuleProgressBar: View {
