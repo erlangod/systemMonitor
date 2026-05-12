@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#764ba2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景圆角矩形 -->
+  <rect x="64" y="64" width="896" height="896" rx="224" ry="224" fill="#f8f9fc"/>
+
+  <!-- 外圈圆环 -->
+  <circle cx="512" cy="512" r="340" fill="none" stroke="#e2e8f0" stroke-width="48"/>
+
+  <!-- 内圈圆环（进度感） -->
+  <circle cx="512" cy="512" r="260" fill="none" stroke="#edf2f7" stroke-width="56"/>
+
+  <!-- 指针刻度线 -->
+  <line x1="512" y1="220" x2="512" y2="300" stroke="#cbd5e0" stroke-width="32" stroke-linecap="round"/>
+  <line x1="220" y1="512" x2="300" y2="512" stroke="#cbd5e0" stroke-width="32" stroke-linecap="round" opacity="0.6"/>
+  <line x1="804" y1="512" x2="724" y2="512" stroke="#cbd5e0" stroke-width="32" stroke-linecap="round" opacity="0.8"/>
+  <line x1="318" y1="318" x2="374" y2="374" stroke="#cbd5e0" stroke-width="24" stroke-linecap="round" opacity="0.5"/>
+  <line x1="706" y1="318" x2="650" y2="374" stroke="#cbd5e0" stroke-width="24" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- 中心圆点 -->
+  <circle cx="512" cy="512" r="48" fill="url(#accent)"/>
+
+  <!-- 指针 -->
+  <line x1="512" y1="512" x2="650" y2="374" stroke="url(#accent)" stroke-width="56" stroke-linecap="round"/>
+
+  <!-- 高光点缀 -->
+  <circle cx="360" cy="280" r="40" fill="#667eea" opacity="0.1"/>
+</svg>
