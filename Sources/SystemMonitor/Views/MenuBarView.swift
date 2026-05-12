@@ -47,6 +47,7 @@ struct TabButton: View {
                 .padding(.vertical, 6)
                 .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
                 .cornerRadius(6)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
