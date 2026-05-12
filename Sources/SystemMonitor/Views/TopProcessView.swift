@@ -5,6 +5,7 @@ struct ProcessListView: View {
     let valueKey: KeyPath<ProcessInfo, Double>
     let unit: String
     var showMemoryBytes: Bool = false
+    var showPid: Bool = false
 
     var body: some View {
         if processes.isEmpty {
@@ -25,7 +26,7 @@ struct ProcessListView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                                 .frame(width: 16, alignment: .trailing)
-                            Text(process.name)
+                            Text(showPid ? "\(process.name) (\(process.pid))" : process.name)
                                 .font(.caption)
                                 .lineLimit(1)
                                 .truncationMode(.tail)

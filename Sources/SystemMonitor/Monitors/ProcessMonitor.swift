@@ -32,6 +32,8 @@ class ProcessMonitor: ObservableObject {
             let task = Process()
             task.executableURL = URL(fileURLWithPath: "/bin/ps")
             task.arguments = ["-axo", "pid=,rss=,pcpu=,comm="]
+            // 避免 ps 在管道中截断长 comm 字段
+            task.environment = Foundation.ProcessInfo.processInfo.environment.merging(["COLUMNS": "1000"], uniquingKeysWith: { current, _ in current })
 
             let pipe = Pipe()
             task.standardOutput = pipe
@@ -64,7 +66,7 @@ class ProcessMonitor: ObservableObject {
                     memoryPercent = raw.rssKB * 1024.0 / Double(self.totalMemory) * 100.0
                     memBytes = UInt64(raw.rssKB * 1024.0)
                 }
-                return ProcessInfo(pid: raw.pid, name: extractAppName(from: raw.rawName), cpuUsage: raw.cpuUsage, memoryUsage: memoryPercent, memoryBytes: memBytes)
+                return ProcessInfo(pid: raw.pid, name: extractAppName(pid: raw.pid, from: raw.rawName), cpuUsage: raw.cpuUsage, memoryUsage: memoryPercent, memoryBytes: memBytes)
             }
 
             // 按应用名分组聚合（同名进程 CPU/内存累加）
@@ -99,12 +101,28 @@ class ProcessMonitor: ObservableObject {
     private func parsePSOutput(_ output: String) -> [RawProcess] {
         var results: [RawProcess] = []
         let lines = output.split(separator: "\n")
+        var i = 0
 
-        for line in lines {
+        while i < lines.count {
+            var line = String(lines[i])
+
+            // 处理 ps 的续行：下一行不以空格开头且字段数不足4时，拼接回来
+            while i + 1 < lines.count {
+                let next = String(lines[i + 1])
+                let nextTrimmed = next.trimmingCharacters(in: .whitespaces)
+                let nextParts = nextTrimmed.split(separator: " ", omittingEmptySubsequences: true)
+                if nextParts.count < 4 && !nextTrimmed.hasPrefix(" ") {
+                    line += next
+                    i += 1
+                } else {
+                    break
+                }
+            }
+
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             let parts = trimmed.split(separator: " ", omittingEmptySubsequences: true)
 
-            guard parts.count >= 4 else { continue }
+            guard parts.count >= 4 else { i += 1; continue }
 
             if let pid = Int32(parts[0]),
                let rssKB = Double(parts[1]),
@@ -112,6 +130,7 @@ class ProcessMonitor: ObservableObject {
                 let name = parts[3...].joined(separator: " ")
                 results.append(RawProcess(pid: pid, rssKB: rssKB, cpuUsage: cpu, rawName: name))
             }
+            i += 1
         }
 
         return results
@@ -137,18 +156,78 @@ private func getPhysFootprint(pid: Int32) -> UInt64 {
 
 // MARK: - 进程名提取
 
-/// 从进程完整路径中提取应用名称：
-/// 1. 如果路径包含 `.app/`，提取 `.app` 前面的名称部分（如 `IntelliJ IDEA.app` -> `IntelliJ IDEA`）
-/// 2. 否则取路径最后一个 `/` 后面的文件名（如 `/usr/sbin/coreaudiod` -> `coreaudiod`）
-private func extractAppName(from path: String) -> String {
-    // 尝试从 .app 路径提取应用名
-    if let range = path.range(of: ".app") {
-        let beforeApp = path[..<range.lowerBound]
+/// 常见无意义目录名，在拼接短进程名时跳过
+private let skipDirs: Set<String> = [
+    "bin", "sbin", "MacOS", "Contents", "Helpers", "Versions",
+    "Frameworks", "Resources", "Support", "usr", "System", "Library",
+    "Applications", "PrivateFrameworks", "CoreServices", "PlugIns",
+    "SharedFrameworks", "libexec", "include", "lib", "local", "opt",
+    "Cellar", "Homebrew", "node_modules", "Caches", "Logs",
+]
+
+/// 从进程信息中提取应用名称：
+/// 1. 先用 proc_pidpath 获取进程完整可执行路径
+/// 2. 如果路径包含 `.app/`，提取 `.app` 前面的应用名
+/// 3. 如果提取后的名称过短（≤3 字符），沿路径向上找第一个有意义的目录拼接
+/// 4. 若仍无意义，尝试 proc_name 作为备选
+/// 5. 否则取路径最后一个 `/` 后面的文件名
+private func extractAppName(pid: Int32, from comm: String) -> String {
+    // 通过 proc_pidpath 获取进程真实可执行路径
+    var pathBuffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+    let pathLen = proc_pidpath(pid, &pathBuffer, UInt32(MAXPATHLEN))
+    let executablePath = pathLen > 0 ? String(cString: pathBuffer) : ""
+
+    // 尝试从 .app 路径提取应用名（严格匹配 .app/ 或末尾的 .app，避免误匹配 .apple 等）
+    if let range = executablePath.range(of: ".app/") {
+        let beforeApp = executablePath[..<range.lowerBound]
+        if let lastSlash = beforeApp.lastIndex(of: "/") {
+            return String(beforeApp[beforeApp.index(after: lastSlash)...])
+        }
+        return String(beforeApp)
+    } else if executablePath.hasSuffix(".app") {
+        let beforeApp = executablePath.dropLast(4)
         if let lastSlash = beforeApp.lastIndex(of: "/") {
             return String(beforeApp[beforeApp.index(after: lastSlash)...])
         }
         return String(beforeApp)
     }
-    // fallback: 取最后的文件名
-    return (path as NSString).lastPathComponent
+
+    // 取最后的文件名
+    let name = executablePath.isEmpty ? comm : (executablePath as NSString).lastPathComponent
+
+    // 若名称过短（≤3 字符），沿路径向上找有意义的目录拼接
+    if name.count <= 3 {
+        let components = executablePath.split(separator: "/")
+        // 从倒数第二个开始往前遍历，跳过无意义目录
+        for i in (0..<(components.count - 1)).reversed() {
+            let dir = String(components[i])
+            if !skipDirs.contains(dir) && dir.count > 2 {
+                return "\(dir)/\(name)"
+            }
+        }
+
+        // 路径中全是目录壳，尝试 proc_name API 作为备选
+        var nameBuf = [CChar](repeating: 0, count: 256)
+        let nameLen = proc_name(pid, &nameBuf, 256)
+        if nameLen > 0 {
+            let procName = String(cString: nameBuf)
+            if procName.count > 3 && procName != comm {
+                return procName
+            }
+        }
+    }
+
+    // 对 com.apple.xxx.yyy 格式的系统进程名，提取最后一段服务名
+    if name.hasPrefix("com.apple.") {
+        let suffix = String(name.dropFirst("com.apple.".count))
+        if let lastDot = suffix.lastIndex(of: ".") {
+            let serviceName = String(suffix[suffix.index(after: lastDot)...])
+            if serviceName.count > 2 {
+                return serviceName
+            }
+        }
+        return suffix
+    }
+
+    return name
 }

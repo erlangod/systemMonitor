@@ -48,6 +48,7 @@ struct TabButton: View {
 }
 
 struct MenuBarView: View {
+    let showPid: Bool
     @StateObject private var cpuMonitor = CPUMonitor()
     @StateObject private var memoryMonitor = MemoryMonitor()
     @StateObject private var diskMonitor = DiskMonitor()
@@ -120,7 +121,8 @@ struct MenuBarView: View {
             ProcessListView(
                 processes: processMonitor.topCPUProcesses,
                 valueKey: \.cpuUsage,
-                unit: "%"
+                unit: "%",
+                showPid: showPid
             )
         }
         .padding(.horizontal, 4)
@@ -135,7 +137,8 @@ struct MenuBarView: View {
                 processes: processMonitor.topMemoryProcesses,
                 valueKey: \.memoryUsage,
                 unit: "%",
-                showMemoryBytes: true
+                showMemoryBytes: true,
+                showPid: showPid
             )
         }
         .padding(.horizontal, 4)
