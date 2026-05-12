@@ -61,10 +61,10 @@ class CPUMonitor: ObservableObject {
                 let current = loadInfo[i]
                 let prev = prevTicks[i]
 
-                let user = Int32(current.cpu_ticks.0) - Int32(prev.cpu_ticks.0)
-                let system = Int32(current.cpu_ticks.1) - Int32(prev.cpu_ticks.1)
-                let idle = Int32(current.cpu_ticks.2) - Int32(prev.cpu_ticks.2)
-                let nice = Int32(current.cpu_ticks.3) - Int32(prev.cpu_ticks.3)
+                let user   = Int64(current.cpu_ticks.0 &- prev.cpu_ticks.0)
+                let system = Int64(current.cpu_ticks.1 &- prev.cpu_ticks.1)
+                let idle   = Int64(current.cpu_ticks.2 &- prev.cpu_ticks.2)
+                let nice   = Int64(current.cpu_ticks.3 &- prev.cpu_ticks.3)
 
                 let total = user + system + idle + nice
                 if total > 0 {
@@ -76,21 +76,11 @@ class CPUMonitor: ObservableObject {
             let avgUsage = totalUsage / Double(cpuCount)
             DispatchQueue.main.async {
                 self.usage = min(max(avgUsage, 0.0), 100.0)
-                self.pressureColor = self.colorForUsage(self.usage)
+                self.pressureColor = colorForUsage(self.usage)
             }
         }
 
         previousTicks = loadInfo
         previousTime = currentTime
-    }
-
-    private func colorForUsage(_ percent: Double) -> Color {
-        if percent > 80 {
-            return .red
-        } else if percent > 50 {
-            return .yellow
-        } else {
-            return .green
-        }
     }
 }

@@ -16,7 +16,7 @@ struct DiskView: View {
                     .fill(monitor.pressureColor)
                     .frame(width: 8, height: 8)
             }
-            Text("\(formatBytes(monitor.usedSpace)) / \(formatBytes(monitor.totalSpace))")
+            Text("\(formatBytes(monitor.usedSpace, binary: false)) / \(formatBytes(monitor.totalSpace, binary: false))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack {

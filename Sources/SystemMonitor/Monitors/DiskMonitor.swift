@@ -9,7 +9,11 @@ class DiskMonitor: ObservableObject {
     @Published var diskType: String = "HDD"
 
     init() {
-        diskType = detectDiskType()
+        diskType = "SSD"
+        DispatchQueue.global(qos: .utility).async {
+            let type = self.detectDiskType()
+            DispatchQueue.main.async { self.diskType = type }
+        }
     }
 
     private func detectDiskType() -> String {
@@ -22,42 +26,34 @@ class DiskMonitor: ObservableObject {
         try? process.run()
         process.waitUntilExit()
         let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        if output.contains("Solid State: Yes") || output.contains("SSD") {
-            return "SSD"
-        }
-        return "HDD"
+        let isSSD = output.components(separatedBy: .newlines)
+            .first { $0.contains("Solid State") }?
+            .contains("Yes") ?? false
+        return (isSSD || output.contains("SSD")) ? "SSD" : "HDD"
     }
 
     func update() {
-        do {
-            let attrs = try FileManager.default.attributesOfFileSystem(forPath: "/")
-
-            guard let total = attrs[.systemSize] as? UInt64,
-                  let free = attrs[.systemFreeSize] as? UInt64 else {
-                return
-            }
-
-            let used = total - free
-            let percent = total > 0 ? Double(used) / Double(total) * 100.0 : 0.0
-
-            DispatchQueue.main.async {
-                self.totalSpace = total
-                self.usedSpace = used
-                self.usagePercent = percent
-                self.pressureColor = self.colorForUsage(percent)
-            }
-        } catch {
-            // Silently fail; values remain at 0
+        let url = URL(fileURLWithPath: "/")
+        let keys: Set<URLResourceKey> = [
+            .volumeTotalCapacityKey,
+            .volumeAvailableCapacityForImportantUsageKey
+        ]
+        guard let values = try? url.resourceValues(forKeys: keys),
+              let total = values.volumeTotalCapacity,
+              let available = values.volumeAvailableCapacityForImportantUsage else {
+            return
         }
-    }
 
-    private func colorForUsage(_ percent: Double) -> Color {
-        if percent > 80 {
-            return .red
-        } else if percent > 50 {
-            return .yellow
-        } else {
-            return .green
+        let totalBytes = UInt64(total)
+        let availBytes = UInt64(max(0, available))
+        let used = totalBytes > availBytes ? totalBytes - availBytes : 0
+        let percent = totalBytes > 0 ? Double(used) / Double(totalBytes) * 100.0 : 0.0
+
+        DispatchQueue.main.async {
+            self.totalSpace = totalBytes
+            self.usedSpace = used
+            self.usagePercent = percent
+            self.pressureColor = colorForUsage(percent)
         }
     }
 }

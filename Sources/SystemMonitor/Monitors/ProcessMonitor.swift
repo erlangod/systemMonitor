@@ -111,7 +111,7 @@ class ProcessMonitor: ObservableObject {
                 let next = String(lines[i + 1])
                 let nextTrimmed = next.trimmingCharacters(in: .whitespaces)
                 let nextParts = nextTrimmed.split(separator: " ", omittingEmptySubsequences: true)
-                if nextParts.count < 4 && !nextTrimmed.hasPrefix(" ") {
+                if nextParts.count < 4 && !next.hasPrefix(" ") {
                     line += next
                     i += 1
                 } else {

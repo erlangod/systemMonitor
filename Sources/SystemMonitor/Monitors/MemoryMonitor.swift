@@ -59,7 +59,7 @@ class MemoryMonitor: ObservableObject {
             self.usedMemory = used
             self.usagePercent = percent
             self.swapUsed = swap
-            self.pressureColor = self.colorForUsage(percent)
+            self.pressureColor = colorForUsage(percent)
         }
     }
 
@@ -72,15 +72,5 @@ class MemoryMonitor: ObservableObject {
         guard result == 0 else { return 0 }
 
         return UInt64(swapUsage.xsu_used)
-    }
-
-    private func colorForUsage(_ percent: Double) -> Color {
-        if percent > 80 {
-            return .red
-        } else if percent > 50 {
-            return .yellow
-        } else {
-            return .green
-        }
     }
 }
