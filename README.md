@@ -26,6 +26,8 @@
 ### 进程管理
 - 同名应用进程智能聚合（CPU 和内存累加统计）
 - 自动从完整路径提取应用名称（支持 `.app` 包名识别）
+- 针对短名称进程（如 `com`）的智能优化：通过 `proc_pidpath` 获取真实可执行路径，结合 `proc_name` 与路径解析避免无意义短名
+- `com.apple.xxx` 格式系统进程自动提取服务名（如 `registerassistantservice`）
 - 每 3 秒自动刷新数据
 
 ## 系统要求
@@ -46,6 +48,7 @@
   - `host_processor_info` — CPU 负载采集
   - `host_statistics64` — 内存统计
   - `proc_pid_rusage` — 进程精确内存占用
+  - `proc_pidpath` / `proc_name` — 进程真实可执行路径与名称解析
   - `FileManager.attributesOfFileSystem` — 磁盘空间
   - `diskutil` — 磁盘类型检测
 
@@ -61,6 +64,9 @@ swift build
 # 运行
 swift run SystemMonitor
 
+# 显示进程 PID（调试排查用）
+swift run SystemMonitor --show-pid
+
 # 或编译 Release 版本
 swift build -c release
 
@@ -69,6 +75,12 @@ swift build -c release
 ```
 
 > 应用启动后将以菜单栏图标（仪表盘图标）形式常驻，不会出现在 Dock 中。
+
+### 启动参数
+
+| 参数 | 说明 |
+|------|------|
+| `--show-pid` | 进程列表中显示 PID，便于排查不明进程（默认不显示） |
 
 ## 项目结构
 
@@ -102,4 +114,8 @@ SystemMonitor/
 ## 截图
 
 <!-- 在此处添加应用截图 -->
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-2.png)
 <!-- ![菜单栏面板](screenshots/menubar.png) -->
+![alt text](image-3.png)
