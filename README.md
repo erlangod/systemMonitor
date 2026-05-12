@@ -18,7 +18,7 @@
 - Top 10 内存占用进程排行（含具体内存用量，基于 `phys_footprint` 精确计算）
 
 ### 硬盘监控
-- 磁盘总容量与已用空间
+- 磁盘总容量与已用空间（与系统"储存空间"面板完全对齐）
 - 使用率百分比及胶囊进度条
 - 自动识别 SSD / HDD 磁盘类型
 - 压力颜色指示
@@ -47,10 +47,19 @@
 - **系统 API**：
   - `host_processor_info` — CPU 负载采集
   - `host_statistics64` — 内存统计
-  - `proc_pid_rusage` — 进程精确内存占用
+  - `proc_pid_rusage` — 进程精确内存占用（`phys_footprint`）
   - `proc_pidpath` / `proc_name` — 进程真实可执行路径与名称解析
-  - `FileManager.attributesOfFileSystem` — 磁盘空间
+  - `URLResourceKey.volumeAvailableCapacityForImportantUsageKey` — 磁盘空间（与 macOS "储存空间"面板对齐，自动排除可清除空间）
   - `diskutil` — 磁盘类型检测
+
+### 数据单位约定
+
+为与 macOS 系统面板保持一致，应用对不同类型数据采用对应的字节单位：
+
+| 数据类型 | 单位 | 除数 | 对应系统面板 |
+|---------|------|------|-------------|
+| 内存（RAM、进程内存） | 二进制 GB（GiB） | 2³⁰ = 1,073,741,824 | 活动监视器 |
+| 磁盘空间 | 十进制 GB | 10⁹ = 1,000,000,000 | 储存空间 |
 
 ## 编译与运行
 
